@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+  VERIFICATION_REVIEWER
+}
+
+enum MatchStatus {
+  ACTIVE
+  UNMATCHED
+  BLOCKED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+  INCOMPLETE
+}
+
+model User {
+  id                String         @id @default(uuid()) @db.Uuid
+  email             String         @unique
+  phone             String?        @unique
+  passwordHash      String
+  role              UserRole       @default(USER)
+  emailVerifiedAt   DateTime?
+  phoneVerifiedAt   DateTime?
+  suspendedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  profile           Profile?
+  photos            Photo[]
+  likesSent         Like[]         @relation("likesSent")
+  likesReceived     Like[]         @relation("likesReceived")
+  matchesA          Match[]        @relation("matchA")
+  matchesB          Match[]        @relation("matchB")
+  notifications     Notification[]
+  subscriptions     Subscription[]
+  messages          Message[]
+  reportsMade       Report[]       @relation("reportsMade")
+  blocksMade        Block[]        @relation("blocksMade")
+  blocksReceived    Block[]        @relation("blocksReceived")
+}
+
+model Profile {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @unique @db.Uuid
+  firstName          String
+  lastName           String?
+  dateOfBirth        DateTime
+  gender             String?
+  countryCode        String
+  city               String?
+  relationshipGoal   String
+  bio                String?
+  interests          String[]
+  values             String[]
+  languages          String[]
+  preferredCountries String[]
+  visible            Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Photo {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  url       String
+  publicId  String?
+  position  Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, position])
+}
+
+model Like {
+  id         String   @id @default(uuid()) @db.Uuid
+  fromUserId String   @db.Uuid
+  toUserId   String   @db.Uuid
+  createdAt  DateTime @default(now())
+  fromUser  User     @relation("likesSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser    User     @relation("likesReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId])
+}
+
+model Match {
+  id             String      @id @default(uuid()) @db.Uuid
+  userAId        String      @db.Uuid
+  userBId        String      @db.Uuid
+  status         MatchStatus @default(ACTIVE)
+  lastInteractionAt DateTime?
+  createdAt      DateTime    @default(now())
+  userA          User        @relation("matchA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB          User        @relation("matchB", fields: [userBId], references: [id], onDelete: Cascade)
+  @@unique([userAId, userBId])
+  @@index([userBId])
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  type      String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, readAt, createdAt])
+}
+
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  userId             String             @db.Uuid
+  providerCustomerId String?
+  providerSubId      String?            @unique
+  status             SubscriptionStatus @default(TRIAL)
+  trialStart         DateTime?
+  trialEnd           DateTime?
+  renewalDate        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, status])
+}
+
+model Block {
+  id        String   @id @default(uuid()) @db.Uuid
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now())
+  blocker   User     @relation("blocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("blocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  @@unique([blockerId, blockedId])
+}
+
+model Report {
+  id         String   @id @default(uuid()) @db.Uuid
+  reporterId String   @db.Uuid
+  subjectId  String   @db.Uuid
+  category   String
+  details    String?
+  status     String   @default("OPEN")
+  createdAt  DateTime @default(now())
+  reporter   User     @relation("reportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  @@index([status, createdAt])
+}
+
+model Message {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @db.Uuid
+  senderId       String   @db.Uuid
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+  sender         User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  @@index([conversationId, createdAt])
+}
