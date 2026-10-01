@@ -1,2 +1,2 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 export async function request(path, options = {}) { const token = localStorage.getItem('bglove_token'); const response = await fetch(`${API_URL}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers } }); const payload = await response.json(); if (!response.ok) throw new Error(payload.message || 'Request failed'); return payload; }
