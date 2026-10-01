@@ -57,4 +57,4 @@ Passwords are hashed with bcrypt and never returned by API responses. The API re
 
 ## Next implementation phase
 
-Replace the in-memory store with Prisma migrations and PostgreSQL, then add profile editing, photos, persistent conversations, block/report enforcement, subscription webhooks, provider-backed verification, and admin authorization with tests for each boundary.
+Replace the in-memory store with Prisma migrations and PostgreSQL, then add photos, persistent conversations, block/report enforcement, provider-backed verification, admin authorization, and the configurable 7-day trial/$1 monthly subscription flow with tests for each boundary.

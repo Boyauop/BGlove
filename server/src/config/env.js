@@ -7,7 +7,7 @@ const env = {
   jwtSecret: process.env.JWT_SECRET || 'development-only-change-me',
   demoMode: process.env.DEMO_MODE === 'true',
   trialDays: Number(process.env.TRIAL_DAYS || 7),
-  subscriptionPrice: Number(process.env.SUBSCRIPTION_PRICE_USD || 2)
+  subscriptionPrice: Number(process.env.SUBSCRIPTION_PRICE_USD || 1)
 };
 
 if (env.nodeEnv === 'production' && env.jwtSecret === 'development-only-change-me') {
