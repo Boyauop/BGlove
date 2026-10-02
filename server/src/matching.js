@@ -87,6 +87,8 @@ export function compatibilityScore(viewer, candidate, config = defaultMatchingCo
 export function isEligible(viewer, candidate, filters = {}) {
   const candidateAge = candidate.age || (candidate.dateOfBirth ? ageFromDate(candidate.dateOfBirth) : 0);
   if (!candidate || candidate.id === viewer.id || candidate.deletedAt || candidate.suspendedAt || candidateAge < 18) return false;
+  if (viewer.preferredGender && viewer.preferredGender !== 'Everyone' && candidate.gender && normalized(viewer.preferredGender) !== normalized(candidate.gender)) return false;
+  if (candidate.preferredGender && candidate.preferredGender !== 'Everyone' && viewer.gender && normalized(candidate.preferredGender) !== normalized(viewer.gender)) return false;
   if (filters.country && candidate.country !== filters.country) return false;
   if (filters.city && normalized(candidate.city) !== normalized(filters.city)) return false;
   if (filters.goal && candidate.relationshipGoal !== filters.goal) return false;
