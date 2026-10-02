@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
+import { compatibilityScore, defaultMatchingConfig } from './matching.js';
 
 const countries = [
   { code: 'ET', name: 'Ethiopia', flag: 'ET' }, { code: 'KE', name: 'Kenya', flag: 'KE' },
@@ -23,17 +24,6 @@ const demoProfiles = [
 const users = new Map(); const likes = new Map(); const matches = new Map(); const notifications = new Map();
 const ageFromDate = (dateOfBirth) => { const today = new Date(); const birthDate = new Date(dateOfBirth); let age = today.getFullYear() - birthDate.getFullYear(); const birthdayNotPassed = today < new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate()); return birthdayNotPassed ? age - 1 : age; };
 const profileCompletion = (user) => { const fields = [user.firstName, user.dateOfBirth, user.country, user.city, user.relationshipGoal, user.interests?.length, user.bio]; return Math.round((fields.filter(Boolean).length / fields.length) * 100); };
-const compatibility = (current, candidate) => {
-  const checks = [
-    ['Shared interests', (current.interests || []).some((interest) => (candidate.interests || []).includes(interest))],
-    ['Relationship goals', Boolean(current.relationshipGoal && current.relationshipGoal === candidate.relationshipGoal)],
-    ['Languages', (current.languages || []).some((language) => (candidate.languages || []).includes(language))],
-    ['Location', Boolean(current.country && current.country === candidate.country)],
-    ['Age preference', !current.preferredAgeMin || (ageFromDate(candidate.dateOfBirth) >= current.preferredAgeMin && ageFromDate(candidate.dateOfBirth) <= (current.preferredAgeMax || 99))]
-  ];
-  const matched = checks.filter(([, value]) => value);
-  return { score: Math.round((matched.length / checks.length) * 100), criteria: checks.map(([label, matched]) => ({ label, matched })) };
-};
 const publicUser = (user, viewer) => ({
   id: user.id, bgloveId: user.bgloveId, firstName: user.firstName, displayName: user.displayName || user.firstName,
   age: ageFromDate(user.dateOfBirth), gender: user.gender, city: user.city, country: user.country,
@@ -43,13 +33,13 @@ const publicUser = (user, viewer) => ({
   hobbies: user.hobbies || [], personality: user.personality || [], idealPartner: user.idealPartner || '',
   preferredAgeMin: user.preferredAgeMin, preferredAgeMax: user.preferredAgeMax,
   preferredCountries: user.preferredCountries || [], bio: user.bio || '', photos: (user.photos || []).filter((photo) => photo.privacy !== 'private'),
-  verified: user.verified === true, profileCompletion: profileCompletion(user), compatibility: viewer && viewer.id !== user.id ? compatibility(viewer, user) : null
+  verified: user.verified === true, profileCompletion: profileCompletion(user), compatibility: viewer && viewer.id !== user.id ? (() => { const match = compatibilityScore(viewer, user, store.matchingConfig); return { score: match.score, criteria: Object.entries(match.components).map(([label, value]) => ({ label, matched: value >= 0.5, score: value })), reasons: match.reasons }; })() : null
 });
 const addNotification = (userId, type, message) => { const list = notifications.get(userId) || []; list.unshift({ id: randomUUID(), type, message, read: false, createdAt: new Date().toISOString() }); notifications.set(userId, list); };
 for (const [name, city, country, goal, interests, bio] of demoProfiles) { const id = randomUUID(); users.set(id, { id, bgloveId: `BG-${id.slice(0, 8).toUpperCase()}`, firstName: name, lastName: '', email: `${name.toLowerCase()}@demo.bglove.test`, passwordHash: bcrypt.hashSync('DemoPass123!', 10), dateOfBirth: '1994-06-15', gender: 'Prefer not to say', city, country, relationshipGoal: goal, interests: interests.split(', '), languages: ['English'], preferredAgeMin: 22, preferredAgeMax: 38, values: ['Kindness', 'Family', 'Growth'], photos: [], bio, verified: true, createdAt: new Date().toISOString() }); notifications.set(id, []); }
 
 export const store = {
-  countries, interestCategories, users, likes, matches, notifications, publicUser, addNotification,
+  countries, interestCategories, users, likes, matches, notifications, recommendationFeedback: [], matchingConfig: structuredClone(defaultMatchingConfig), publicUser, addNotification,
   async createUser(input) { const id = randomUUID(); const user = { id, bgloveId: `BG-${id.slice(0, 8).toUpperCase()}`, ...input, languages: [], interests: [], hobbies: [], personality: [], preferredCountries: [], photos: [], passwordHash: await bcrypt.hash(input.password, 12), verified: false, createdAt: new Date().toISOString() }; delete user.password; users.set(user.id, user); notifications.set(user.id, []); return user; },
   async verifyPassword(user, password) { return bcrypt.compare(password, user.passwordHash); },
   getUserByEmail(email) { return [...users.values()].find((user) => user.email.toLowerCase() === email.toLowerCase()); },
