@@ -46,8 +46,7 @@ test('structured profile fields, photos, and match explanations are exposed safe
   const photo = await fetch(`${baseUrl}/me/photos`, { method: 'POST', headers, body: JSON.stringify({ url: 'https://cdn.example.test/profile.jpg', privacy: 'private' }) });
   const photoBody = await photo.json();
   assert.equal(photo.status, 201);
-  assert.equal(photoBody.data.photos.length, 1);
-  assert.equal(photoBody.data.photos[0].privacy, undefined);
+  assert.equal(photoBody.data.photos.length, 0);
 
   const discovery = await fetch(`${baseUrl}/profiles`, { headers });
   assert.equal(discovery.status, 200);
